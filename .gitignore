@@ -1,0 +1,48 @@
+# Binaries for programs and plugins
+*.exe
+*.exe~
+*.dll
+*.so
+*.dylib
+
+# Test binary, built with `go test -c`
+*.test
+
+# Output of the go coverage tool, specifically when used with LiteIDE
+*.out
+
+# Go workspace file
+go.work
+
+# Plugin binary
+rotating-service-accounts
+vault-plugin-dual-ldap
+
+# Dependency directories (remove the comment below to include it)
+vendor/
+
+# Go build cache
+.cache/
+
+# IDE specific files
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS specific files
+.DS_Store
+Thumbs.db
+
+# Temporary files
+*.tmp
+*.bak
+*.log
+
+# LDIF test files
+*.ldif
+!dual-accounts-test.ldif
+
+# Vault dev server data
+vault-data/
