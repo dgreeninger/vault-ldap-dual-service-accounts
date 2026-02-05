@@ -584,6 +584,11 @@ func (b *dualLDAPBackend) pathStaticRoleWrite(ctx context.Context, req *logical.
 
 		b.logger.Debug("usernames found", "username_a", usernameA, "username_b", usernameB)
 
+		// Validate that these usernames aren't already in use by another role
+		if err := b.validateUsernamesNotInUse(ctx, req.Storage, name, usernameA.(string), usernameB.(string)); err != nil {
+			return logical.ErrorResponse(err.Error()), nil
+		}
+
 		gracePeriod := data.Get("grace_period").(int)
 		if gracePeriod == 0 {
 			gracePeriod = 259200 // 3 days default
@@ -1360,6 +1365,57 @@ func (b *dualLDAPBackend) rotateDualAccountPassword(ctx context.Context, storage
 		return err
 	}
 
-	b.logger.Info("dual account password rotation completed", "role", roleName)
+	return nil
+}
+
+// validateUsernamesNotInUse checks if the given LDAP usernames are already used by another role
+func (b *dualLDAPBackend) validateUsernamesNotInUse(ctx context.Context, storage logical.Storage, currentRoleName string, usernameA string, usernameB string) error {
+	// List all static roles
+	roles, err := storage.List(ctx, staticRolePath)
+	if err != nil {
+		return fmt.Errorf("failed to list roles: %w", err)
+	}
+
+	// Check each role for username conflicts
+	for _, roleName := range roles {
+		// Skip the current role being created/updated
+		if roleName == currentRoleName {
+			continue
+		}
+
+		role, err := b.getStaticRole(ctx, storage, roleName)
+		if err != nil {
+			b.logger.Warn("failed to get role during validation", "role", roleName, "error", err)
+			continue
+		}
+		if role == nil {
+			continue
+		}
+
+		// Check dual-account roles
+		if role.DualAccountMode {
+			if role.AccountA.Username == usernameA {
+				return fmt.Errorf("username '%s' is already in use by role '%s' (account_a)", usernameA, roleName)
+			}
+			if role.AccountA.Username == usernameB {
+				return fmt.Errorf("username '%s' is already in use by role '%s' (account_a)", usernameB, roleName)
+			}
+			if role.AccountB.Username == usernameA {
+				return fmt.Errorf("username '%s' is already in use by role '%s' (account_b)", usernameA, roleName)
+			}
+			if role.AccountB.Username == usernameB {
+				return fmt.Errorf("username '%s' is already in use by role '%s' (account_b)", usernameB, roleName)
+			}
+		} else {
+			// Check single-account roles
+			if role.Username == usernameA {
+				return fmt.Errorf("username '%s' is already in use by single-account role '%s'", usernameA, roleName)
+			}
+			if role.Username == usernameB {
+				return fmt.Errorf("username '%s' is already in use by single-account role '%s'", usernameB, roleName)
+			}
+		}
+	}
+
 	return nil
 }

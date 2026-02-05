@@ -110,9 +110,9 @@ configure:
 	@echo "Configuring plugin..."
 	$(VAULT) write rotating-service-accounts/config \
 		url="ldap://localhost:389" \
-		binddn="cn=admin,dc=example,dc=com" \
-		bindpass="admin" \
-		userdn="ou=users,dc=example,dc=com" \
+		binddn="cn=admin,dc=learn,dc=example" \
+		bindpass="2LearnVault" \
+		userdn="ou=users,dc=learn,dc=example" \
 		userattr="cn" \
 		username="svcaccount" \
 		rotation_period=60 \
