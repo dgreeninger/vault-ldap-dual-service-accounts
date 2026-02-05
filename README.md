@@ -88,8 +88,8 @@ vault write rotating-service-accounts/config \
 
 # Create a dual-account static role
 vault write rotating-service-accounts/static-role/myapp \
-    username_a="account_a" \
-    username_b="account_b" \
+    username_a="appuser_a" \
+    username_b="appuser_b" \
     rotation_period=1209600 \
     grace_period=259200 \
     dual_account_mode=true \
@@ -97,8 +97,8 @@ vault write rotating-service-accounts/static-role/myapp \
 ```
 
 **Parameters:**
-- `username_a`: First LDAP account username
-- `username_b`: Second LDAP account username
+- `username_a`: First LDAP account username (e.g., appuser_a)
+- `username_b`: Second LDAP account username (e.g., appuser_b)
 - `rotation_period`: How often to rotate (seconds) - e.g., 1209600 = 2 weeks
 - `grace_period`: Overlap period (seconds) - e.g., 259200 = 3 days
 - `dual_account_mode`: Must be `true` for dual-account rotation
@@ -113,22 +113,22 @@ vault read rotating-service-accounts/static-cred/myapp
 **Response includes:**
 ```json
 {
-  "username": "account_a",
+  "username": "appuser_a",
   "password": "generated-password",
-  "account": "account_a",
+  "account": "appuser_a",
   "rotation_state": "account_a_active",
   "is_active": true,
   "last_rotated": 1766012000,
   "last_rotated_formatted": "2025-12-17T14:53:20-08:00",
   "metadata": {
     "account_a": {
-      "username": "account_a",
+      "username": "appuser_a",
       "status": "active",
       "last_rotated": 1766012296,
       "previous_password": "old-password"
     },
     "account_b": {
-      "username": "account_b", 
+      "username": "appuser_b",
       "status": "inactive",
       "last_rotated": 1766012476,
       "previous_password": "old-password"
