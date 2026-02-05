@@ -745,12 +745,33 @@ func (b *dualLDAPBackend) pathStaticRoleRead(ctx context.Context, req *logical.R
 	// Add dual-account specific fields
 	if role.DualAccountMode {
 		responseData["dual_account_mode"] = true
-		responseData["username_a"] = role.AccountA.Username
-		responseData["username_b"] = role.AccountB.Username
+
+		// Determine active and standby usernames
+		var activeUsername, standbyUsername string
+		if role.CurrentActive == "account_a" {
+			activeUsername = role.AccountA.Username
+			standbyUsername = role.AccountB.Username
+		} else {
+			activeUsername = role.AccountB.Username
+			standbyUsername = role.AccountA.Username
+		}
+
+		responseData["active_username"] = activeUsername
+		responseData["standby_username"] = standbyUsername
 		responseData["grace_period"] = int(role.GracePeriod.Seconds())
-		responseData["current_active"] = role.CurrentActive
-		responseData["rotation_state"] = role.RotationState.State
 		responseData["last_rotation_time"] = role.LastRotationTime
+
+		// Simplify rotation state
+		var simpleState string
+		switch role.RotationState.State {
+		case "account_a_active", "account_b_active":
+			simpleState = "active"
+		case "grace_period_a_to_b", "grace_period_b_to_a":
+			simpleState = "grace_period"
+		default:
+			simpleState = role.RotationState.State
+		}
+		responseData["rotation_state"] = simpleState
 	} else {
 		// Single-account mode
 		responseData["dual_account_mode"] = false
@@ -802,11 +823,13 @@ func (b *dualLDAPBackend) pathStaticCredRead(ctx context.Context, req *logical.R
 
 	// NEW: Dual account credential response
 	if role.DualAccountMode {
-		var activeAccount dualAccountInfo
+		var activeAccount, standbyAccount dualAccountInfo
 		if role.CurrentActive == "account_a" {
 			activeAccount = role.AccountA
+			standbyAccount = role.AccountB
 		} else {
 			activeAccount = role.AccountB
+			standbyAccount = role.AccountA
 		}
 
 		daysUntilRotation := int(role.RotationPeriod.Hours() / 24)
@@ -815,33 +838,44 @@ func (b *dualLDAPBackend) pathStaticCredRead(ctx context.Context, req *logical.R
 			daysUntilRotation = int(time.Until(time.Unix(role.RotationState.GracePeriodEndTime, 0)).Hours() / 24)
 		}
 
-		return &logical.Response{
-			Data: map[string]interface{}{
-				"username":               activeAccount.Username,
-				"password":               activeAccount.CurrentPassword,
-				"account":                activeAccount.Username,
-				"rotation_state":         role.RotationState.State,
-				"days_until_rotation":    daysUntilRotation,
-				"current_active_account": activeAccount.Username,
-				"last_rotated":           role.LastRotationTime,
-				"last_rotated_formatted": time.Unix(role.LastRotationTime, 0).Format(time.RFC3339),
-				"metadata": map[string]interface{}{
-					"account_a": map[string]interface{}{
-						"username":          role.AccountA.Username,
-						"status":            role.AccountA.Status,
-						"last_rotated":      role.AccountA.LastRotated,
-						"last_rotated_fmt":  time.Unix(role.AccountA.LastRotated, 0).Format(time.RFC3339),
-						"previous_password": role.AccountA.PreviousPassword,
-					},
-					"account_b": map[string]interface{}{
-						"username":          role.AccountB.Username,
-						"status":            role.AccountB.Status,
-						"last_rotated":      role.AccountB.LastRotated,
-						"last_rotated_fmt":  time.Unix(role.AccountB.LastRotated, 0).Format(time.RFC3339),
-						"previous_password": role.AccountB.PreviousPassword,
-					},
+		// Simplify rotation state
+		var simpleState string
+		switch role.RotationState.State {
+		case "account_a_active", "account_b_active":
+			simpleState = "active"
+		case "grace_period_a_to_b", "grace_period_b_to_a":
+			simpleState = "grace_period"
+		default:
+			simpleState = role.RotationState.State
+		}
+
+		responseData := map[string]interface{}{
+			"username":               activeAccount.Username,
+			"password":               activeAccount.CurrentPassword,
+			"rotation_state":         simpleState,
+			"days_until_rotation":    daysUntilRotation,
+			"last_rotated":           role.LastRotationTime,
+			"last_rotated_formatted": time.Unix(role.LastRotationTime, 0).Format(time.RFC3339),
+			"metadata": map[string]interface{}{
+				"active_account": map[string]interface{}{
+					"username":          activeAccount.Username,
+					"password":          activeAccount.CurrentPassword,
+					"last_rotated":      activeAccount.LastRotated,
+					"last_rotated_fmt":  time.Unix(activeAccount.LastRotated, 0).Format(time.RFC3339),
+					"previous_password": activeAccount.PreviousPassword,
+				},
+				"standby_account": map[string]interface{}{
+					"username":          standbyAccount.Username,
+					"password":          standbyAccount.CurrentPassword,
+					"last_rotated":      standbyAccount.LastRotated,
+					"last_rotated_fmt":  time.Unix(standbyAccount.LastRotated, 0).Format(time.RFC3339),
+					"previous_password": standbyAccount.PreviousPassword,
 				},
 			},
+		}
+
+		return &logical.Response{
+			Data: responseData,
 		}, nil
 	}
 
@@ -902,8 +936,15 @@ func (b *dualLDAPBackend) pathRotateRole(ctx context.Context, req *logical.Reque
 		return logical.ErrorResponse("no configuration found"), nil
 	}
 
-	if err := b.rotateRolePassword(ctx, req.Storage, config, name, role); err != nil {
-		return logical.ErrorResponse("failed to rotate password: %s", err.Error()), nil
+	// Handle dual-account vs single-account rotation
+	if role.DualAccountMode {
+		if err := b.rotateDualAccountPassword(ctx, req.Storage, config, name, role); err != nil {
+			return logical.ErrorResponse("failed to rotate password: %s", err.Error()), nil
+		}
+	} else {
+		if err := b.rotateRolePassword(ctx, req.Storage, config, name, role); err != nil {
+			return logical.ErrorResponse("failed to rotate password: %s", err.Error()), nil
+		}
 	}
 
 	return &logical.Response{
