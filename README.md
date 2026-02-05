@@ -84,10 +84,10 @@ vault write rotating-service-accounts/config \
     binddn="cn=admin,dc=learn,dc=example" \
     bindpass="2LearnVault" \
     userdn="ou=users,dc=learn,dc=example" \
-    username="appuser"
+    username="svcaccount"
 
 # Create a dual-account static role
-vault write rotating-service-accounts/static-role/appuser \
+vault write rotating-service-accounts/static-role/myapp \
     username_a="account_a" \
     username_b="account_b" \
     rotation_period=1209600 \
@@ -107,7 +107,7 @@ vault write rotating-service-accounts/static-role/appuser \
 ### Read Dual-Account Credentials
 
 ```bash
-vault read rotating-service-accounts/static-cred/appuser
+vault read rotating-service-accounts/static-cred/myapp
 ```
 
 **Response includes:**
@@ -141,7 +141,7 @@ vault read rotating-service-accounts/static-cred/appuser
 
 ```bash
 # Manually test (always use BOTH username and password from Vault)
-eval $(vault read -format=json rotating-service-accounts/static-cred/appuser | jq -r '@sh "USER=\(.data.username) PASS=\(.data.password)"')
+eval $(vault read -format=json rotating-service-accounts/static-cred/myapp | jq -r '@sh "USER=\(.data.username) PASS=\(.data.password)"')
 ldapwhoami -H ldap://localhost:389 -D "cn=$USER,ou=users,dc=learn,dc=example" -w "$PASS"
 ```
 
@@ -149,7 +149,7 @@ ldapwhoami -H ldap://localhost:389 -D "cn=$USER,ou=users,dc=learn,dc=example" -w
 
 ```bash
 # Watch rotation state by repeatedly reading credentials
-watch -n 5 'vault read rotating-service-accounts/static-cred/appuser'
+watch -n 5 'vault read rotating-service-accounts/static-cred/myapp'
 ```
 
 ## Single-Account Mode (Legacy)
@@ -158,13 +158,13 @@ For simpler use cases, the plugin also supports single-account rotation:
 
 ```bash
 # Create role
-make create-appuser-role
+make create-dual-account-role ROLE=myapp
 
 # Get credentials
-make get-role-creds ROLE=appuser
+make get-role-creds ROLE=myapp
 
 # Manual rotation
-make rotate-role ROLE=appuser
+make rotate-role ROLE=myapp
 ```
 
 ## Available Make Commands
@@ -204,7 +204,7 @@ make rotate-role ROLE=appuser
 | `make docker-adduser` | Add test user to server |
 | `make docker-verify` | Verify LDAP server and test user |
 | `make docker-setup` | Complete setup (server + users) |
-| `make docker-addappuser` | Add appuser to server |
+| `make docker-add-dual-accounts` | Add dual accounts to server |
 
 ### Configuration & Credentials
 
@@ -220,7 +220,7 @@ make rotate-role ROLE=appuser
 
 | Command | Description |
 |---------|-------------|
-| `make create-appuser-role` | Create static role for appuser |
+| `make create-dual-account-role ROLE=myapp` | Create dual-account role |
 | `make read-role ROLE=name` | Read static role configuration |
 | `make get-role-creds ROLE=name` | Get credentials for a role |
 | `make rotate-role ROLE=name` | Rotate password for a role |
@@ -347,14 +347,14 @@ ldapsearch -x -H ldap://localhost:389 -D "cn=admin,dc=learn,dc=example" -w 2Lear
 ```bash
 # Always use BOTH username and password from Vault response
 # The active account changes during rotation!
-eval $(vault read -format=json rotating-service-accounts/static-cred/appuser | jq -r '@sh "USER=\(.data.username) PASS=\(.data.password)"')
+eval $(vault read -format=json rotating-service-accounts/static-cred/myapp | jq -r '@sh "USER=\(.data.username) PASS=\(.data.password)"')
 echo "Active account: $USER"
 ldapwhoami -H ldap://localhost:389 -D "cn=$USER,ou=users,dc=learn,dc=example" -w "$PASS"
 ```
 
 ### Check rotation state
 ```bash
-vault read -format=json rotating-service-accounts/static-cred/appuser | jq '{username: .data.username, rotation_state: .data.rotation_state, metadata: .data.metadata}'
+vault read -format=json rotating-service-accounts/static-cred/myapp | jq '{username: .data.username, rotation_state: .data.rotation_state, metadata: .data.metadata}'
 ```
 
 ### Password rotation fails
