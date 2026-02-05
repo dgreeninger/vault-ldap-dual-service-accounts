@@ -737,12 +737,28 @@ func (b *dualLDAPBackend) pathStaticRoleRead(ctx context.Context, req *logical.R
 		return nil, nil
 	}
 
+	responseData := map[string]interface{}{
+		"rotation_period": int(role.RotationPeriod.Seconds()),
+		"password_length": role.PasswordLength,
+	}
+
+	// Add dual-account specific fields
+	if role.DualAccountMode {
+		responseData["dual_account_mode"] = true
+		responseData["username_a"] = role.AccountA.Username
+		responseData["username_b"] = role.AccountB.Username
+		responseData["grace_period"] = int(role.GracePeriod.Seconds())
+		responseData["current_active"] = role.CurrentActive
+		responseData["rotation_state"] = role.RotationState.State
+		responseData["last_rotation_time"] = role.LastRotationTime
+	} else {
+		// Single-account mode
+		responseData["dual_account_mode"] = false
+		responseData["username"] = role.Username
+	}
+
 	return &logical.Response{
-		Data: map[string]interface{}{
-			"username":        role.Username,
-			"rotation_period": int(role.RotationPeriod.Seconds()),
-			"password_length": role.PasswordLength,
-		},
+		Data: responseData,
 	}, nil
 }
 
@@ -804,7 +820,6 @@ func (b *dualLDAPBackend) pathStaticCredRead(ctx context.Context, req *logical.R
 				"username":               activeAccount.Username,
 				"password":               activeAccount.CurrentPassword,
 				"account":                activeAccount.Username,
-				"is_active":              activeAccount.Status == "active",
 				"rotation_state":         role.RotationState.State,
 				"days_until_rotation":    daysUntilRotation,
 				"current_active_account": activeAccount.Username,
