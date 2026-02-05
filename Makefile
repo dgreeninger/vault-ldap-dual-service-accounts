@@ -105,9 +105,9 @@ disable:
 	$(VAULT) secrets disable rotating-service-accounts
 	@echo "Plugin disabled"
 
-# Configure plugin (example - edit as needed)
-configure:
-	@echo "Configuring plugin..."
+# Configure plugin with Docker LDAP servers
+configure-ldap:
+	@echo "Configuring plugin for Docker LDAP servers..."
 	$(VAULT) write rotating-service-accounts/config \
 		url="ldap://localhost:389" \
 		binddn="cn=admin,dc=learn,dc=example" \
@@ -115,9 +115,9 @@ configure:
 		userdn="ou=users,dc=learn,dc=example" \
 		userattr="cn" \
 		username="svcaccount" \
-		rotation_period=60 \
+		rotation_period=120 \
 		password_length=32
-	@echo "Plugin configured"
+	@echo "Plugin configured for local Docker LDAP servers"
 
 # Read configuration
 read-config:
@@ -217,20 +217,6 @@ docker-setup: docker-ldap docker-adduser
 	@echo "LDAP test environment ready!"
 	@echo "Use 'make docker-verify' to verify the setup"
 	@echo "Use 'make configure-ldap' to configure the Vault plugin"
-
-# Configure plugin with Docker LDAP servers
-configure-ldap:
-	@echo "Configuring plugin for Docker LDAP servers..."
-	$(VAULT) write rotating-service-accounts/config \
-		url="ldap://localhost:389" \
-		binddn="cn=admin,dc=learn,dc=example" \
-		bindpass="2LearnVault" \
-		userdn="ou=users,dc=learn,dc=example" \
-		userattr="cn" \
-		username="svcaccount" \
-		rotation_period=120 \
-		password_length=32
-	@echo "Plugin configured for local Docker LDAP servers"
 
 # Add appuser to LDAP server
 docker-addappuser:
