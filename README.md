@@ -44,23 +44,17 @@ make register
 make enable
 ```
 
-### 4. Configure for Single-Account Mode (Legacy)
+### 4. Or Configure for Dual-Account Mode (Recommended)
 
+First, create the dual test accounts on the ldap server:
 ```bash
-make configure-ldap
-```
-
-### 5. Or Configure for Dual-Account Mode (Recommended)
-
-First, create the dual test accounts:
-```bash
-cd rotating-service-accounts
 make docker-add-dual-accounts
 ```
 
-Then configure Vault:
+Then configure Vault to manage them:
 ```bash
 make configure-ldap
+make create-dual-account-role ROLE=myapp
 ```
 
 ## Dual-Account Rotation (Recommended)
@@ -220,21 +214,20 @@ make rotate-role ROLE=myapp
 
 | Command | Description |
 |---------|-------------|
-| `make create-dual-account-role ROLE=myapp` | Create dual-account role |
+| `make create-dual-account-role ROLE=name` | Create dual-account role (requires dual accounts in LDAP) |
 | `make read-role ROLE=name` | Read static role configuration |
+| `make read-role-state ROLE=name` | Read rotation state (dual-account mode only) |
 | `make get-role-creds ROLE=name` | Get credentials for a role |
-| `make rotate-role ROLE=name` | Rotate password for a role |
+| `make rotate-role ROLE=name` | Manually rotate password for a role |
 | `make delete-role ROLE=name` | Delete a static role |
 
-### Dual-Account Testing
+### Dual-Account Setup & Testing
 
 | Command | Description |
 |---------|-------------|
-| `make docker-add-dual-accounts` | Create appuser_a and appuser_b accounts |
+| `make docker-add-dual-accounts` | Create appuser_a and appuser_b test accounts in LDAP |
+| `make docker-verify-dual-accounts` | Verify dual accounts exist in LDAP |
 | `make configure-ldap` | Configure Vault with LDAP connection |
-| `make docker-verify-dual-accounts` | Verify accounts exist |
-| `make create-dual-account-role ROLE=name` | Create dual-account role |
-| `make read-role-state ROLE=name` | Read rotation state |
 
 ## Building the Plugin
 

@@ -198,7 +198,6 @@ docker-adduser:
 		'objectClass: top' \
 		'cn: svcaccount' \
 		'sn: Service' \
-		'memberOf: cn=dev,ou=groups,dc=learn,dc=example' \
 		'userPassword: InitialPassword123' \
 		> learn-vault-example.ldif
 	@echo "Adding configuration to LDAP server..."
