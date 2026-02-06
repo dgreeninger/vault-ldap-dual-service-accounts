@@ -63,6 +63,8 @@ Dual-account rotation solves the problem of applications using stale credentials
 
 ### How It Works
 
+![Dual Account Rotation Diagram](dual-account-rotation-diagram.svg)
+
 1. **account_a** is active, applications use its credentials
 2. When rotation period expires, **account_b**'s password is rotated
 3. Grace period begins - both accounts have valid, known passwords
