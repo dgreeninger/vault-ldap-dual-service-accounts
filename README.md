@@ -4,7 +4,22 @@ This HashiCorp Vault plugin enables password rotation for service accounts on a 
 
 ## Why This Plugin is Necessary
 
-Traditional password rotation for LDAP service accounts creates a critical window of vulnerability: when a password is rotated, applications using cached credentials continue authenticating with the old password until they refresh their credentials from Vault. During this gap, authentication failures occur, potentially causing application outages. This plugin solves this problem through dual-account rotation, where two service accounts alternate between active and inactive states with a configurable grace period. When rotation occurs, the inactive account's password is changed first, then after a grace period (allowing all applications to fetch the new credentials), the accounts swap roles. This ensures that during the grace period, applications can authenticate successfully with either the current or previous credentials, eliminating the authentication failure window and preventing application lockouts during credential rotation.
+Traditional password rotation for LDAP service accounts creates a critical window of vulnerability: when a password is rotated, applications using cached credentials continue authenticating with the old password until they refresh their credentials from Vault. During this gap, authentication failures occur, potentially causing application outages. This plugin solves this problem through dual-account rotation, where two service accounts alternate between active and inactive states with a configurable grace period.
+
+## Dual-Account Rotation
+
+Dual-account rotation solves the problem of applications using stale credentials during rotation. Instead of rotating a single account's password, the plugin manages two accounts and switches between them.
+
+### How It Works
+
+![Dual Account Rotation Diagram](dual-account-rotation-diagram.svg)
+
+1. **account_a** is active, applications use its credentials
+2. When rotation period expires, **account_b**'s password is rotated
+3. Grace period begins - both accounts have valid, known passwords
+4. After grace period, **account_b** becomes active
+5. Cycle repeats with **account_a** as the next rotation target
+
 
 ## Features
 
@@ -60,20 +75,6 @@ Then configure Vault to manage them:
 make configure-ldap
 make create-dual-account-role ROLE=myapp
 ```
-
-## Dual-Account Rotation (Recommended)
-
-Dual-account rotation solves the problem of applications using stale credentials during rotation. Instead of rotating a single account's password, the plugin manages two accounts and switches between them.
-
-### How It Works
-
-![Dual Account Rotation Diagram](dual-account-rotation-diagram.svg)
-
-1. **account_a** is active, applications use its credentials
-2. When rotation period expires, **account_b**'s password is rotated
-3. Grace period begins - both accounts have valid, known passwords
-4. After grace period, **account_b** becomes active
-5. Cycle repeats with **account_a** as the next rotation target
 
 ### Configure Dual-Account Mode
 
