@@ -2,6 +2,10 @@
 
 This HashiCorp Vault plugin enables password rotation for service accounts on a single LDAP server, with support for **dual-account rotation** to ensure zero-downtime credential updates.
 
+## Why This Plugin is Necessary
+
+Traditional password rotation for LDAP service accounts creates a critical window of vulnerability: when a password is rotated, applications using cached credentials continue authenticating with the old password until they refresh their credentials from Vault. During this gap, authentication failures occur, potentially causing application outages. This plugin solves this problem through dual-account rotation, where two service accounts alternate between active and inactive states with a configurable grace period. When rotation occurs, the inactive account's password is changed first, then after a grace period (allowing all applications to fetch the new credentials), the accounts swap roles. This ensures that at any given time, applications can authenticate successfully with either the current or previous credentials, eliminating the authentication failure window and preventing application lockouts during credential rotation.
+
 ## Features
 
 - **Dual-account rotation**: Rotates between two service accounts (account_a/account_b) with grace periods on single server
